@@ -43,7 +43,3 @@ SysSnap is a bash shell script that provides an interactive dialog-based GUI to 
 * nmcli (NetworkManager CLI) for network info
 * curl (for public IP)
 * sudo privileges for system updates
-
-### 📝 License
-
-###### MIT License – free to use, modify, and distribute.
