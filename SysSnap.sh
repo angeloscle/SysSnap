@@ -193,16 +193,20 @@ snapMenu() {
                 rm -f "$tmpfile"
             ;;
         6)
+        if [ -d /var/lib/snapd/cache ]; then
             dialog --yesno "Proceed to remove disabled snaps?" 10 50
-            if [ $? -eq 0 ] && [ -d /var/lib/snapd/cache ]; then
+            if [ $? -eq 0 ]; then
                 sudo snap list --all | awk '/disabled/{print $1, $2}' | \
                 while read snapname revision; do
                     sudo snap remove "$snapname" --revision="$revision"
                 done
                 dialog --msgbox "Old snaps deleted." 6 40
             else
-                dialog --msgbox "No snap dir found." 10 30
+                dialog --msgbox "Something went wrong." 10 30
             fi
+        else 
+            dialog --msgbox "No snap dir found." 10 30
+        fi
             ;;
         7)
             if [ -d /var/lib/snapd/cache ]; then
