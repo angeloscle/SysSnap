@@ -17,7 +17,7 @@ SysSnap is a bash shell script that provides an interactive dialog-based GUI to 
 │    ├── 2) View Active Connections
 │    ├── 3) Show Local IPs(All Connected Profiles)
 │    └── 4) Back
-├── 3) Fetch System Updates
+├── 3) System Updates
 │    ├── 1) Fetch System Updates
 │    ├── 2) List/Update Available Systems Updates
 │    └── 3) Back
