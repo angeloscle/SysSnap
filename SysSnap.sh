@@ -168,7 +168,7 @@ snapMenu() {
 
             if [ ${#choices[@]} -eq 0 ]; then
                 dialog --msgbox "No updates available." 8 40
-                exit 0
+                continue
             fi
 
             selected=$(dialog --stdout --checklist "Select packages to update:" 20 70 15 "${choices[@]}")
