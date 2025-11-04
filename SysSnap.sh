@@ -15,21 +15,18 @@ PASS=$(
 echo "$PASS" | sudo -S true
 ( while true; do sudo -v; sleep 120; done ) &
 
-snapMenu() {
+SysSnap() {
     while true; do
         choice=$(dialog --clear \
             --backtitle "Manager" \
             --title "Maintenance Options" \
-            --menu "Choose an option:" 15 50 8 \
-            0 "Show disk space" \
-            1 "System info" \
-            2 "Network tools" \
-            3 "Fetch system updates" \
-            4 "List/update available systems updates" \
-            5 "Show all snap ersions" \
-            6 "Remove disabled snaps" \
-            7 "Empty snap cache directory" \
-            8 "Exit" \
+            --menu "Choose an option:" 12 45 5 \
+            0 "Show Disk Space" \
+            1 "System Info" \
+            2 "Network Tools" \
+            3 "System Updates" \
+            4 "Snap Management" \
+            5 "Exit" \
             3>&1 1>&2 2>&3)
 
         exit_status=$?
@@ -92,7 +89,7 @@ snapMenu() {
         while true; do
             sys_choice=$(dialog --clear --title "Network Tools" \
             --menu "Select information to view:" 15 50 4 \
-            1 "Check public IP" \
+            1 "View my Public IP" \
             2 "View Active Connections" \
             3 "Show Local IPs" \
             4 "Back" 2>&1 >/dev/tty)
@@ -139,96 +136,133 @@ snapMenu() {
         done
         ;;
         3)
-            updatesFile="updates.txt"
-            [ -f "$updatesFile" ] || touch "$updatesFile"
-                (
-                sudo apt update >"$updatesFile" 2>&1
-                echo "done" >> "$updatesFile"
-                ) &
-            {
-        for i in $(seq 0 5 95); do
-                echo $i
-                sleep 1
-                # If update finished early, break
-                grep -q "done" "$updatesFile" && break
-            done
-            echo 100
-        } | dialog --title "Scanning for Updates..." --gauge "Please wait while the system checks for updates..." 10 70 0     
+            while true; do
+            sys_choice=$(dialog --clear --title "System Updates" \
+            --menu "Select an option:" 15 50 4 \
+            1 "Fetch System Updates" \
+            2 "List/Update Available Systems Updates" \
+            3 "Back" 2>&1 >/dev/tty)
+            
+                case $sys_choice in
+                    1)
+                        updatesFile="updates.txt"
+                        [ -f "$updatesFile" ] || touch "$updatesFile"
+                            (
+                            sudo apt update >"$updatesFile" 2>&1
+                            echo "done" >> "$updatesFile"
+                            ) &
+                        {
+                        for i in $(seq 0 5 95); do
+                                echo $i
+                                sleep 1
+                                # If update finished early, break
+                                grep -q "done" "$updatesFile" && break
+                            done
+                            echo 100
+                        } | dialog --title "Scanning for Updates..." --gauge "Please wait while the system checks for updates..." 10 70 0     
+                        ;;
+                    2)
+                        updatesFile=$(mktemp)
+                        sudo apt list --upgradable 2>/dev/null | tail -n +2 > "$updatesFile"
+
+                        # Build dialog checklist input
+                        choices=()
+                        while IFS= read -r line; do
+                            pkg=$(echo "$line" | cut -d'/' -f1)
+                            version=$(echo "$line" | awk '{print $2}')
+                            choices+=("$pkg" "$version" "off")
+                        done < "$updatesFile"
+
+                        if [ ${#choices[@]} -eq 0 ]; then
+                            dialog --msgbox "No updates available." 8 40
+                            continue
+                        fi
+
+                        selected=$(dialog --stdout --checklist "Select packages to update:" 20 70 15 "${choices[@]}")
+
+                        if [ -n "$selected" ]; then
+                            # Convert to space-separated package list
+                            pkgs=$(echo "$selected" | tr -d '"')
+                            sudo apt install -y $pkgs | tee "$updatesFile"
+                            dialog --textbox "$updatesFile" 30 100
+                        else
+                            dialog --msgbox "No packages selected." 8 40
+                        fi
+                        ;;
+                    3)
+                            break
+                            ;;
+                        *)
+                            break
+                            ;;
+            esac
+        done
         ;;
-
         4)
-            updatesFile=$(mktemp)
-            sudo apt list --upgradable 2>/dev/null | tail -n +2 > "$updatesFile"
+            while true; do
+            sys_choice=$(dialog --clear --title "Snap Management" \
+            --menu "Select an option:" 15 50 4 \
+            1 "Show All Snap Versions" \
+            2 "Remove Disabled Snaps" \
+            3 "Empty Snap Cache Directory" \
+            4 "Back" 2>&1 >/dev/tty)
 
-            # Build dialog checklist input
-            choices=()
-            while IFS= read -r line; do
-                pkg=$(echo "$line" | cut -d'/' -f1)
-                version=$(echo "$line" | awk '{print $2}')
-                choices+=("$pkg" "$version" "off")
-            done < "$updatesFile"
-
-            if [ ${#choices[@]} -eq 0 ]; then
-                dialog --msgbox "No updates available." 8 40
-                continue
-            fi
-
-            selected=$(dialog --stdout --checklist "Select packages to update:" 20 70 15 "${choices[@]}")
-
-            if [ -n "$selected" ]; then
-                # Convert to space-separated package list
-                pkgs=$(echo "$selected" | tr -d '"')
-                sudo apt install -y $pkgs | tee "$updatesFile"
-                dialog --textbox "$updatesFile" 30 100
-            else
-                dialog --msgbox "No packages selected." 8 40
-            fi
-            ;;
+             case $sys_choice in
+                    1)
+                        tmpfile=$(mktemp)
+                        if [ -d /var/lib/snapd/cache ]; then
+                            snap list --all | grep -v "disabled" > "$tmpfile"
+                            dialog --clear --title "Old Snap Packages" --textbox "$tmpfile" 20 70
+                        else 
+                            dialog --msgbox "No snap dir found." 10 30
+                        fi
+                            rm -f "$tmpfile"
+                        ;;       
+                    2)
+                        if [ -d /var/lib/snapd/cache ]; then
+                            dialog --yesno "Proceed to remove disabled snaps?" 10 50
+                            if [ $? -eq 0 ]; then
+                                sudo snap list --all | awk '/disabled/{print $1, $2}' | \
+                                while read snapname revision; do
+                                    sudo snap remove "$snapname" --revision="$revision"
+                                done
+                                dialog --msgbox "Old snaps deleted." 6 40
+                            else
+                                dialog --msgbox "Something went wrong." 10 30
+                            fi
+                        else 
+                            dialog --msgbox "No snap dir found." 10 30
+                        fi
+                            ;;
+                    3)
+                        if [ -d /var/lib/snapd/cache ]; then
+                            dialog --yesno "Delete snap cache dir? (Cache size: $cache_size)" 10 50
+                                if [ $? -eq 0 ]; then
+                                    sudo rm -rf /var/lib/snapd/cache/*
+                                    dialog --msgbox "Snap cache deleted." 6 40
+                                fi
+                        else
+                            dialog --msgbox "No snap dir found." 10 30
+                        fi
+                        ;;
+                    4)
+                            break
+                            ;;
+                        *)
+                            break
+                            ;;
+                esac
+        done
+        ;;
+        
         5)
-            tmpfile=$(mktemp)
-            if [ -d /var/lib/snapd/cache ]; then
-                snap list --all | grep -v "disabled" > "$tmpfile"
-                dialog --clear --title "Old Snap Packages" --textbox "$tmpfile" 20 70
-            else 
-                dialog --msgbox "No snap dir found." 10 30
-            fi
-                rm -f "$tmpfile"
-            ;;
-        6)
-            if [ -d /var/lib/snapd/cache ]; then
-                dialog --yesno "Proceed to remove disabled snaps?" 10 50
-                if [ $? -eq 0 ]; then
-                    sudo snap list --all | awk '/disabled/{print $1, $2}' | \
-                    while read snapname revision; do
-                        sudo snap remove "$snapname" --revision="$revision"
-                    done
-                    dialog --msgbox "Old snaps deleted." 6 40
-                else
-                    dialog --msgbox "Something went wrong." 10 30
-                fi
-            else 
-                dialog --msgbox "No snap dir found." 10 30
-            fi
-                ;;
-        7)
-            if [ -d /var/lib/snapd/cache ]; then
-                dialog --yesno "Delete snap cache dir? (Cache size: $cache_size)" 10 50
-                    if [ $? -eq 0 ]; then
-                        sudo rm -rf /var/lib/snapd/cache/*
-                        dialog --msgbox "Snap cache deleted." 6 40
-                    fi
-            else
-                dialog --msgbox "No snap dir found." 10 30
-            fi
-            ;;
-        8)
             clear
-            echo "Exited by user."
+            echo "Script terminated."
             break
             ;;
         esac
     done
 }
 
-snapMenu
+SysSnap
 
