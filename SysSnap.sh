@@ -21,7 +21,6 @@ SysSnap() {
             --backtitle "Manager" \
             --title "Maintenance Options" \
             --menu "Choose an option:" 12 45 5 \
-            0 "Show Disk Space" \
             1 "System Info" \
             2 "Network Tools" \
             3 "System Updates" \
@@ -38,7 +37,19 @@ SysSnap() {
         fi
 
         case $choice in
-        0)
+
+        1)
+        while true; do
+        sys_choice=$(dialog --clear --title "System Info" \
+        --menu "Select information to view:" 15 50 4 \
+        1 "Show Disk Space" \
+        2 "Memory Usage" \
+        3 "CPU Info" \
+        4 "System Load" \
+        5 "Back" 2>&1 >/dev/tty)
+
+        case $sys_choice in
+            1)
             tmpfile=$(mktemp)
             {
                echo -e "Filesystem\tSize\tUsed\tAvail\tUsed%"
@@ -48,18 +59,7 @@ SysSnap() {
             dialog --title "Disk Usage (/dev/vda1)" --textbox "$tmpfile" 10 60
             rm -f "$tmpfile"
             ;;
-
-        1)
-        while true; do
-        sys_choice=$(dialog --clear --title "System Info" \
-        --menu "Select information to view:" 15 50 4 \
-        1 "Memory Usage" \
-        2 "CPU Info" \
-        3 "System Load" \
-        4 "Back" 2>&1 >/dev/tty)
-
-        case $sys_choice in
-            1)
+            2)
                 tmpfile=$(mktemp)
                  {
                echo -e "Total Memory\tUsed\tFree"
@@ -68,15 +68,15 @@ SysSnap() {
                 dialog --title "Memory and Swap Usage" --textbox "$tmpfile" 20 50
                 rm -f "$tmpfile"
                 ;;
-            2)
+            3)
                 cpuinfo=$(lscpu | grep -E "Model name|CPU\(s\)|Thread|Core|MHz|Vendor")
                 dialog --title "CPU Info" --msgbox "$cpuinfo" 20 70
                 ;;
-            3)
+            4)
                 loadinfo=$(uptime)
                 dialog --title "System Load" --msgbox "$loadinfo" 10 60
                 ;;
-            4)
+            5)
                 break
                 ;;
             *)
