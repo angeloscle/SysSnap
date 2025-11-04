@@ -19,7 +19,7 @@ SysSnap is a bash shell script that provides an interactive dialog-based GUI to 
 │    └── 4) Back
 ├── 3) System Updates
 │    ├── 1) Fetch System Updates
-│    ├── 2) List/Update Available Systems Updates
+│    ├── 2) List/Update Available System Updates
 │    └── 3) Back
 ├── 4) Snap Management
 │    ├── 1) Show All Snap Versions

@@ -140,7 +140,7 @@ SysSnap() {
             sys_choice=$(dialog --clear --title "System Updates" \
             --menu "Select an option:" 15 50 4 \
             1 "Fetch System Updates" \
-            2 "List/Update Available Systems Updates" \
+            2 "List/Update Available System Updates" \
             3 "Back" 2>&1 >/dev/tty)
             
                 case $sys_choice in
