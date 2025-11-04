@@ -6,20 +6,29 @@ cache_size=$(
         echo "Not found"
     fi
 )
+PASS=$(
+    dialog --title "Authentication Required" \
+    --passwordbox "Enter your sudo password:" 10 50 \
+    3>&1 1>&2 2>&3 3>&-
+)
+
+echo "$PASS" | sudo -S true
+( while true; do sudo -v; sleep 120; done ) &
+
 snapMenu() {
     while true; do
         choice=$(dialog --clear \
             --backtitle "Manager" \
             --title "Maintenance Options" \
-            --menu "Choose an option:" 15 50 5 \
-            0 "Show Disk Space" \
-            1 "System Info" \
-            2 "Network Tools" \
-            3 "Get updates" \
-            4 "Install updates" \
-            5 "Show all Snap Versions" \
-            6 "Remove Disabled Snaps" \
-            7 "Empty Snap Cache Directory" \
+            --menu "Choose an option:" 15 50 8 \
+            0 "Show disk space" \
+            1 "System info" \
+            2 "Network tools" \
+            3 "Fetch system updates" \
+            4 "List/update available systems updates" \
+            5 "Show all snap ersions" \
+            6 "Remove disabled snaps" \
+            7 "Empty snap cache directory" \
             8 "Exit" \
             3>&1 1>&2 2>&3)
 
@@ -90,56 +99,50 @@ snapMenu() {
 
             case $sys_choice in
                 1)
-                public_ip=$(curl -s ifconfig.me | cut -d "%"  -f 1)
+                    public_ip=$(curl -s ifconfig.me | cut -d "%"  -f 1)
                     dialog --title "Public IP" --msgbox "Your public IP is: $public_ip" 10 50
                     ;;
                 2)
-                connections=$(ss -tulpn | awk '$2 == "LISTEN"')
+                    connections=$(ss -tulpn | awk '$2 == "LISTEN"')
                     dialog --title "Active Connections" --msgbox "$connections" 20 100
                     ;;
                 3)
-                tmpfile=$(mktemp)
+                    tmpfile=$(mktemp)
 
-                # Get active connections and their devices
-                while IFS=: read -r conn dev; do
-                    [ -z "$conn" ] && continue
-                    [ -z "$dev" ] && continue
+                    # Get active connections and their devices
+                    while IFS=: read -r conn dev; do
+                        [ -z "$conn" ] && continue
+                        [ -z "$dev" ] && continue
 
-                    ip=$(nmcli -g IP4.ADDRESS device show "$dev" | head -n 1)
-                    gw=$(nmcli -g IP4.GATEWAY device show "$dev")
-                    dns=$(nmcli -g IP4.DNS device show "$dev" | tr '\n' ' ')
+                        ip=$(nmcli -g IP4.ADDRESS device show "$dev" | head -n 1)
+                        gw=$(nmcli -g IP4.GATEWAY device show "$dev")
+                        dns=$(nmcli -g IP4.DNS device show "$dev" | tr '\n' ' ')
 
-                    echo "Connection: $conn" >> "$tmpfile"
-                    echo "Device: $dev" >> "$tmpfile"
-                    echo "IP Address: ${ip:-N/A}" >> "$tmpfile"
-                    echo "Gateway: ${gw:-N/A}" >> "$tmpfile"
-                    echo "DNS: ${dns:-N/A}" >> "$tmpfile"
-                    echo "----------------------------------------" >> "$tmpfile"
-                done < <(nmcli -t -f NAME,DEVICE connection show --active)
+                        echo "Connection: $conn" >> "$tmpfile"
+                        echo "Device: $dev" >> "$tmpfile"
+                        echo "IP Address: ${ip:-N/A}" >> "$tmpfile"
+                        echo "Gateway: ${gw:-N/A}" >> "$tmpfile"
+                        echo "DNS: ${dns:-N/A}" >> "$tmpfile"
+                        echo "----------------------------------------" >> "$tmpfile"
+                    done < <(nmcli -t -f NAME,DEVICE connection show --active)
 
-                dialog --title "Active Network Connections" --textbox "$tmpfile" 20 70
-                rm -f "$tmpfile"
-                ;;
+                    dialog --title "Active Network Connections" --textbox "$tmpfile" 20 70
+                    rm -f "$tmpfile"
+                    ;;
                 4)
-                break
+                    break
                     ;;
                 *)
-                break
+                    break
                     ;;
             esac
         done
         ;;
         3)
-            PASS=$(
-                dialog --title "Authentication Required" \
-                --passwordbox "Enter your sudo password:" 10 50 \
-                3>&1 1>&2 2>&3 3>&-
-            )
-
             updatesFile="updates.txt"
             [ -f "$updatesFile" ] || touch "$updatesFile"
                 (
-                echo "$PASS" | sudo apt update >"$updatesFile" 2>&1
+                sudo apt update >"$updatesFile" 2>&1
                 echo "done" >> "$updatesFile"
                 ) &
             {
@@ -150,8 +153,7 @@ snapMenu() {
                 grep -q "done" "$updatesFile" && break
             done
             echo 100
-        } | dialog --title "Scanning for Updates..." --gauge "Please wait while the system checks for updates..." 10 70 0
-        
+        } | dialog --title "Scanning for Updates..." --gauge "Please wait while the system checks for updates..." 10 70 0     
         ;;
 
         4)
@@ -193,21 +195,21 @@ snapMenu() {
                 rm -f "$tmpfile"
             ;;
         6)
-        if [ -d /var/lib/snapd/cache ]; then
-            dialog --yesno "Proceed to remove disabled snaps?" 10 50
-            if [ $? -eq 0 ]; then
-                sudo snap list --all | awk '/disabled/{print $1, $2}' | \
-                while read snapname revision; do
-                    sudo snap remove "$snapname" --revision="$revision"
-                done
-                dialog --msgbox "Old snaps deleted." 6 40
-            else
-                dialog --msgbox "Something went wrong." 10 30
+            if [ -d /var/lib/snapd/cache ]; then
+                dialog --yesno "Proceed to remove disabled snaps?" 10 50
+                if [ $? -eq 0 ]; then
+                    sudo snap list --all | awk '/disabled/{print $1, $2}' | \
+                    while read snapname revision; do
+                        sudo snap remove "$snapname" --revision="$revision"
+                    done
+                    dialog --msgbox "Old snaps deleted." 6 40
+                else
+                    dialog --msgbox "Something went wrong." 10 30
+                fi
+            else 
+                dialog --msgbox "No snap dir found." 10 30
             fi
-        else 
-            dialog --msgbox "No snap dir found." 10 30
-        fi
-            ;;
+                ;;
         7)
             if [ -d /var/lib/snapd/cache ]; then
                 dialog --yesno "Delete snap cache dir? (Cache size: $cache_size)" 10 50
