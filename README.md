@@ -6,27 +6,27 @@ SysSnap is a bash shell script that provides an interactive dialog-based GUI to 
 
 ### 📋 SysSnap Main Menu
 ```
-├── 0) System Info
+├── 1) System Info
 │    ├── 1) Show Disk Space
 │    ├── 2) Memory usage
 │    ├── 3) CPU info
 │    ├── 4) System load
 │    └── 5) Back
-├── 1) Network Tools
+├── 2) Network Tools
 │    ├── 1) View my Public IP
 │    ├── 2) View Active Connections
 │    ├── 3) Show Local IPs(All Connected Profiles)
 │    └── 4) Back
-├── 2) System Updates
+├── 3) System Updates
 │    ├── 1) Fetch System Updates
 │    ├── 2) List/Update Available System Updates
 │    └── 3) Back
-├── 3) Snap Management
+├── 4) Snap Management
 │    ├── 1) Show All Snap Versions
 │    ├── 2) Remove Disabled Snaps
 │    └── 3) Empty Snap Cache Directory
 │    └── 4) Back
-└── 4) Exit
+└── 5) Exit
 ```
 
 ### ⚙️ Requirements
