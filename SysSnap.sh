@@ -1,19 +1,19 @@
 #!/bin/zsh
-cache_size=$(
-    if [ -d /var/lib/snapd/cache ]; then
-        du -sh /var/lib/snapd/cache | cut -f1; 
-    else
-        echo "Not found"
-    fi
-)
-PASS=$(
-    dialog --title "Authentication Required" \
-    --passwordbox "Enter your sudo password:" 10 50 \
-    3>&1 1>&2 2>&3 3>&-
-)
+# cache_size=$(
+#     if [ -d /var/lib/snapd/cache ]; then
+#         du -sh /var/lib/snapd/cache | cut -f1; 
+#     else
+#         echo "Not found"
+#     fi
+# )
+# PASS=$(
+#     dialog --title "Authentication Required" \
+#     --passwordbox "Enter your sudo password:" 10 50 \
+#     3>&1 1>&2 2>&3 3>&-
+# )
 
-echo "$PASS" | sudo -S true
-( while true; do sudo -v; sleep 120; done ) &
+# echo "$PASS" | sudo -S true
+# ( while true; do sudo -v; sleep 120; done ) &
 
 SysSnap() {
     while true; do
@@ -148,7 +148,7 @@ SysSnap() {
                         updatesFile="updates.txt"
                         [ -f "$updatesFile" ] || touch "$updatesFile"
                             (
-                            sudo apt update >"$updatesFile" 2>&1
+                            apt update >"$updatesFile" 2>&1
                             echo "done" >> "$updatesFile"
                             ) &
                         {
@@ -163,7 +163,7 @@ SysSnap() {
                         ;;
                     2)
                         updatesFile=$(mktemp)
-                        sudo apt list --upgradable 2>/dev/null | tail -n +2 > "$updatesFile"
+                        apt list --upgradable 2>/dev/null | tail -n +2 > "$updatesFile"
 
                         # Build dialog checklist input
                         choices=()
@@ -183,7 +183,7 @@ SysSnap() {
                         if [ -n "$selected" ]; then
                             # Convert to space-separated package list
                             pkgs=$(echo "$selected" | tr -d '"')
-                            sudo apt install -y $pkgs | tee "$updatesFile"
+                            apt install -y $pkgs | tee "$updatesFile"
                             dialog --textbox "$updatesFile" 30 100
                         else
                             dialog --msgbox "No packages selected." 8 40
@@ -222,7 +222,7 @@ SysSnap() {
                         if [ -d /var/lib/snapd/cache ]; then
                             dialog --yesno "Proceed to remove disabled snaps?" 10 50
                             if [ $? -eq 0 ]; then
-                                sudo snap list --all | awk '/disabled/{print $1, $2}' | \
+                                snap list --all | awk '/disabled/{print $1, $2}' | \
                                 while read snapname revision; do
                                     sudo snap remove "$snapname" --revision="$revision"
                                 done
@@ -238,7 +238,7 @@ SysSnap() {
                         if [ -d /var/lib/snapd/cache ]; then
                             dialog --yesno "Delete snap cache dir? (Cache size: $cache_size)" 10 50
                                 if [ $? -eq 0 ]; then
-                                    sudo rm -rf /var/lib/snapd/cache/*
+                                    rm -rf /var/lib/snapd/cache/*
                                     dialog --msgbox "Snap cache deleted." 6 40
                                 fi
                         else
